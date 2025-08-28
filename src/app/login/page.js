@@ -33,12 +33,12 @@ export default function LoginPage() {
             
             // Check for a successful response and that a token exists
             if (response.status === 200 && response.data.token) {
-                // Store the token and user's full name from the API response
-                localStorage.setItem('loggedInUser', response.data.token);
-                localStorage.setItem('username', response.data.user.full_name);
+                // Store the token and user data from the API response
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('user', JSON.stringify(response.data.user));
 
                 // Set the success message and open the dialog
-                setDialogMessage(`เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับคุณ ${response.data.user.full_name}`);
+                setDialogMessage(`เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับ คุณ${response.data.user.full_name}`);
                 setOpenDialog(true);
             }
         } catch (err) {
@@ -51,8 +51,31 @@ export default function LoginPage() {
     // Handle closing the dialog box
     const handleCloseDialog = () => {
         setOpenDialog(false);
-        // Navigate to the main page after closing the dialog
-        window.location.href = '/FindDoctor';
+        
+        // Get user data from localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+            try {
+                const user = JSON.parse(userData);
+                
+                // Navigate based on user role
+                if (user.role === 'admin') {
+                    window.location.href = '/admin';
+                } else if (user.role === 'doctor') {
+                    window.location.href = '/FindDoctor';
+                } else {
+                    // Default for patients
+                    window.location.href = '/FindDoctor';
+                }
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                // Fallback to main page
+                window.location.href = '/FindDoctor';
+            }
+        } else {
+            // Fallback to main page
+            window.location.href = '/FindDoctor';
+        }
     };
 
     return (

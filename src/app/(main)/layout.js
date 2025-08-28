@@ -9,7 +9,8 @@ import {
     Button,
     Menu,
     MenuItem,
-    Box
+    Box,
+    Container
 } from '@mui/material';
 
 function Navbar() {
@@ -19,10 +20,15 @@ function Navbar() {
     const open = Boolean(anchorEl);
 
     useEffect(() => {
-        // ดึงชื่อผู้ใช้จาก localStorage เพื่อตรวจสอบสถานะการล็อกอิน
-        const loggedInUsername = localStorage.getItem('username'); 
-        if (loggedInUsername) {
-            setUser(loggedInUsername);
+        // ดึงข้อมูล user จาก localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+            try {
+                const parsedUser = JSON.parse(userData);
+                setUser(parsedUser);
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+            }
         }
     }, []);
 
@@ -35,8 +41,8 @@ function Navbar() {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('loggedInUser'); // Token
-        localStorage.removeItem('username');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setUser(null);
         setAnchorEl(null);
         router.push('/login');
@@ -57,10 +63,25 @@ function Navbar() {
                 {/* ตรวจสอบสถานะ user ถ้ามี (ล็อกอินแล้ว) ให้แสดงเมนูสำหรับสมาชิก */}
                 {user ? (
                     <>
-                        <Button color="inherit" onClick={() => navigateTo('/FindDoctor')}>หน้าหลัก</Button>
-                        <Button color="inherit" onClick={() => navigateTo('/appointment')}>จองนัดหมายกับแพทย์</Button>
-                        <Button color="inherit" onClick={() => navigateTo('/my-appointments')}>ดูรายการนัดหมาย</Button>
-                        <Button color="inherit" onClick={handleMenu}>{user}</Button>
+                        {/* แสดงเมนูตาม role */}
+                        {user.role === 'patient' && (
+                            <>
+                                <Button color="inherit" onClick={() => navigateTo('/my-appointments')}>ดูรายการนัดหมาย</Button>
+                            </>
+                        )}
+                        
+                        {user.role === 'doctor' && (
+                            <>
+                                <Button color="inherit" onClick={() => navigateTo('/doctor-appointments')}>ดูนัดหมายคนไข้</Button>
+                                <Button color="inherit" onClick={() => navigateTo('/doctor-time-slots')}>จัดการเวลาว่าง</Button>
+                            </>
+                        )}
+                        
+                        {user.role === 'admin' && (
+                            <Button color="inherit" onClick={() => navigateTo('/admin')}>Admin</Button>
+                        )}
+                        
+                        <Button color="inherit" onClick={handleMenu}>คุณ{user.full_name}</Button>
                         <Menu
                             anchorEl={anchorEl}
                             open={open}
@@ -82,11 +103,46 @@ function Navbar() {
     );
 }
 
+// สร้างคอมโพเนนต์ Footer
+function Footer() {
+    return (
+        <Box
+            component="footer"
+            sx={{
+                py: 3,
+                px: 2,
+                mt: 'auto', // คำสั่งสำคัญที่ทำให้ footer อยู่ด้านล่างสุด
+                backgroundColor: (theme) =>
+                    theme.palette.mode === 'light'
+                        ? theme.palette.grey[200]
+                        : theme.palette.grey[800],
+            }}
+        >
+            <Container maxWidth="lg" sx={{ textAlign: 'center' }}>
+                <Typography variant="body1">
+                    Medicare - บริการสุขภาพครบวงจร
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    {'Copyright © '}
+                    Medicare {new Date().getFullYear()}
+                    {'.'}
+                </Typography>
+            </Container>
+        </Box>
+    );
+}
+
+
 export default function MainLayout({ children }) {
     return (
-        <Box>
+        // ปรับ Box หลักให้เป็น flex container เพื่อให้ footer อยู่ด้านล่างสุด
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Navbar />
-            <main>{children}</main>
+            {/* ใช้ component="main" และให้ขยายเต็มพื้นที่ที่เหลือ */}
+            <Box component="main" sx={{ flexGrow: 1 }}>
+                {children}
+            </Box>
+            <Footer />
         </Box>
     );
 }

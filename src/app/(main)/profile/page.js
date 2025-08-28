@@ -1,219 +1,415 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-    Button,
-    TextField,
-    Box,
-    Typography,
+import { useRouter } from 'next/navigation';
+import { 
     Container,
+    Typography,
+    Box,
     Card,
     CardContent,
+    TextField,
+    Button,
+    Paper,
+    Avatar,
+    Grid,
+    Divider,
+    Alert,
     CircularProgress,
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogContentText,
     DialogActions
 } from '@mui/material';
-import axios from 'axios';
+import PersonIcon from '@mui/icons-material/Person';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
+import LockIcon from '@mui/icons-material/Lock';
 
 export default function ProfilePage() {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [editing, setEditing] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [changePasswordDialog, setChangePasswordDialog] = useState(false);
+    const [passwordData, setPasswordData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
     const [formData, setFormData] = useState({
         full_name: '',
         email: '',
         phone_number: '',
-        address: '',
+        address: ''
     });
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [openDialog, setOpenDialog] = useState(false);
-    const [dialogMessage, setDialogMessage] = useState('');
-    const [isEditing, setIsEditing] = useState(false); // State to toggle between view and edit mode
+    const router = useRouter();
 
     useEffect(() => {
-        // Check for logged-in user token
-        const token = localStorage.getItem('loggedInUser');
-        if (!token) {
-            window.location.href = '/login';
-            return;
-        }
-        
-        // Fetch user data from the backend to pre-fill the form
-        const fetchUserProfile = async () => {
-            setLoading(true);
-            try {
-                // Add Authorization header to the request
-                const response = await axios.get('http://localhost:3001/users/me', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                }); 
-                const userData = response.data;
-                setFormData({
-                    full_name: userData.full_name,
-                    email: userData.email,
-                    phone_number: userData.phone_number,
-                    address: userData.address,
-                });
-            } catch (err) {
-                setError('เกิดข้อผิดพลาดในการดึงข้อมูลโปรไฟล์');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchUserProfile();
+        loadUserProfile();
     }, []);
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleUpdateProfile = async (event) => {
-        event.preventDefault();
-        setLoading(true);
-        setError('');
-
+    const loadUserProfile = async () => {
         try {
-            const token = localStorage.getItem('loggedInUser');
-            // Add Authorization header to the request
-            const response = await axios.put('http://localhost:3001/users/me', {
-                full_name: formData.full_name,
-                email: formData.email,
-                phone_number: formData.phone_number,
-                address: formData.address,
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            setLoading(true);
+            const token = localStorage.getItem('token');
+            if (!token) {
+                router.push('/login');
+                return;
+            }
+
+            const response = await fetch('/api/users/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            if (response.status === 200) {
-                setDialogMessage('อัปเดตโปรไฟล์สำเร็จแล้ว!');
-                setOpenDialog(true);
-                setIsEditing(false); // Switch back to view mode after successful update
+            if (response.ok) {
+                const userData = await response.json();
+                setUser(userData);
+                setFormData({
+                    full_name: userData.full_name || '',
+                    email: userData.email || '',
+                    phone_number: userData.phone_number || '',
+                    address: userData.address || ''
+                });
+            } else {
+                setError('ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'เกิดข้อผิดพลาดในการอัปเดตโปรไฟล์');
+            setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCloseDialog = () => {
-        setOpenDialog(false);
+    const handleEdit = () => {
+        setEditing(true);
+        setError('');
+        setSuccess('');
     };
 
-    return (
-        <Container component="main" maxWidth="xs" sx={{ mt: 8, mb: 4 }}>
-            <Card elevation={6} sx={{ p: 4 }}>
-                <CardContent>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <Typography component="h1" variant="h4" sx={{ mb: 2 }}>
-                            ข้อมูลโปรไฟล์
-                        </Typography>
-                        {loading ? (
-                            <CircularProgress />
-                        ) : (
-                            <>
-                                {!isEditing ? (
-                                    <Box sx={{ width: '100%' }}>
-                                        <Typography variant="body1" sx={{ mb: 2 }}>
-                                            <strong>ชื่อ-นามสกุล:</strong> {formData.full_name}
-                                        </Typography>
-                                        <Typography variant="body1" sx={{ mb: 2 }}>
-                                            <strong>อีเมล:</strong> {formData.email}
-                                        </Typography>
-                                        <Typography variant="body1" sx={{ mb: 2 }}>
-                                            <strong>เบอร์โทรศัพท์:</strong> {formData.phone_number}
-                                        </Typography>
-                                        <Typography variant="body1" sx={{ mb: 2 }}>
-                                            <strong>ที่อยู่:</strong> {formData.address}
-                                        </Typography>
-                                        <Button
-                                            fullWidth
-                                            variant="contained"
-                                            onClick={() => setIsEditing(true)}
-                                            sx={{ mt: 3, mb: 2 }}
-                                        >
-                                            แก้ไขโปรไฟล์
-                                        </Button>
-                                    </Box>
-                                ) : (
-                                    <Box component="form" onSubmit={handleUpdateProfile} noValidate sx={{ mt: 1, width: '100%' }}>
-                                        <TextField
-                                            margin="normal"
-                                            fullWidth
-                                            label="ชื่อ-นามสกุล"
-                                            name="full_name"
-                                            value={formData.full_name}
-                                            onChange={handleChange}
-                                        />
-                                        <TextField
-                                            margin="normal"
-                                            fullWidth
-                                            label="อีเมล"
-                                            name="email"
-                                            type="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                        />
-                                        <TextField
-                                            margin="normal"
-                                            fullWidth
-                                            label="เบอร์โทรศัพท์"
-                                            name="phone_number"
-                                            value={formData.phone_number}
-                                            onChange={handleChange}
-                                        />
-                                        <TextField
-                                            margin="normal"
-                                            fullWidth
-                                            label="ที่อยู่"
-                                            name="address"
-                                            value={formData.address}
-                                            onChange={handleChange}
-                                        />
+    const handleCancel = () => {
+        setEditing(false);
+        setFormData({
+            full_name: user.full_name || '',
+            email: user.email || '',
+            phone_number: user.phone_number || '',
+            address: user.address || ''
+        });
+        setError('');
+        setSuccess('');
+    };
 
+    const handleSave = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/users/me', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                setSuccess('อัปเดตข้อมูลสำเร็จ!');
+                setEditing(false);
+                await loadUserProfile();
+            } else {
+                const errorData = await response.text();
+                setError(errorData || 'ไม่สามารถอัปเดตข้อมูลได้');
+            }
+        } catch (error) {
+            setError('เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            setError('รหัสผ่านใหม่ไม่ตรงกัน');
+            return;
+        }
+
+        if (passwordData.newPassword.length < 6) {
+            setError('รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร');
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/users/me/password', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    currentPassword: passwordData.currentPassword,
+                    newPassword: passwordData.newPassword
+                })
+            });
+
+            if (response.ok) {
+                setSuccess('เปลี่ยนรหัสผ่านสำเร็จ!');
+                setChangePasswordDialog(false);
+                setPasswordData({
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: ''
+                });
+            } else {
+                const errorData = await response.text();
+                setError(errorData || 'ไม่สามารถเปลี่ยนรหัสผ่านได้');
+            }
+        } catch (error) {
+            setError('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน');
+        }
+    };
+
+    if (loading) {
+        return (
+            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                    <CircularProgress size={60} />
+                </Box>
+            </Container>
+        );
+    }
+
+    if (!user) {
+        return (
+            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                <Alert severity="error">ไม่พบข้อมูลผู้ใช้</Alert>
+            </Container>
+        );
+    }
+
+    return (
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+            {/* Header */}
+            <Box sx={{ textAlign: 'center', mb: 6 }}>
+                <Paper elevation={2} sx={{ 
+                    background: '#ffffff', 
+                    borderRadius: 3, 
+                    p: 4,
+                    border: '1px solid rgb(148, 148, 148)'
+                }}>
+                    <Avatar sx={{ 
+                        width: 100, 
+                        height: 100, 
+                        mx: 'auto', 
+                        mb: 3, 
+                        bgcolor: 'primary.main',
+                        fontSize: '2.5rem'
+                    }}>
+                        {user.full_name ? user.full_name.charAt(0) : 'U'}
+                    </Avatar>
+                    <Typography variant="h4" component="h1" sx={{ mb: 2, fontWeight: 'bold' }}>
+                        โปรไฟล์ของฉัน
+                    </Typography>
+                    <Typography variant="h6" color="text.secondary">
+                        จัดการข้อมูลส่วนตัวและบัญชีของคุณ
+                    </Typography>
+                </Paper>
+            </Box>
+
+            {/* Error and Success Alerts */}
+            {error && (
+                <Alert severity="error" sx={{ mb: 4, borderRadius: 2 }}>
+                    {error}
+                </Alert>
+            )}
+
+            {success && (
+                <Alert severity="success" sx={{ mb: 4, borderRadius: 2 }}>
+                    {success}
+                </Alert>
+            )}
+
+            {/* Profile Information */}
+            <Grid container spacing={4}>
+                <Grid item xs={12} md={8}>
+                    <Paper elevation={2} sx={{ 
+                        background: '#ffffff', 
+                        borderRadius: 3,
+                        border: '1px solid rgb(148, 148, 148)'
+                    }}>
+                        <CardContent sx={{ p: 4 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                                    ข้อมูลส่วนตัว
+                                </Typography>
+                                {!editing ? (
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<EditIcon />}
+                                        onClick={handleEdit}
+                                    >
+                                        แก้ไข
+                                    </Button>
+                                ) : (
+                                    <Box sx={{ display: 'flex', gap: 1 }}>
                                         <Button
-                                            type="submit"
-                                            fullWidth
-                                            variant="contained"
-                                            sx={{ mt: 3, mb: 2 }}
-                                            disabled={loading}
-                                        >
-                                            {loading ? <CircularProgress size={24} /> : 'อัปเดตโปรไฟล์'}
-                                        </Button>
-                                        <Button
-                                            fullWidth
                                             variant="outlined"
-                                            onClick={() => setIsEditing(false)}
-                                            sx={{ mt: 1 }}
+                                            color="error"
+                                            startIcon={<CancelIcon />}
+                                            onClick={handleCancel}
                                         >
                                             ยกเลิก
                                         </Button>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<SaveIcon />}
+                                            onClick={handleSave}
+                                        >
+                                            บันทึก
+                                        </Button>
                                     </Box>
                                 )}
-                            </>
-                        )}
-                        {error && <Typography color="error" variant="body2">{error}</Typography>}
-                    </Box>
-                </CardContent>
-            </Card>
-            <Dialog
-                open={openDialog}
-                onClose={handleCloseDialog}
-            >
-                <DialogTitle>{"สถานะการอัปเดต"}</DialogTitle>
+                            </Box>
+
+                            <Divider sx={{ mb: 3, borderColor: 'rgb(148, 148, 148)' }} />
+
+                            <Grid container spacing={3}>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="ชื่อ-นามสกุล"
+                                        value={formData.full_name}
+                                        onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                                        disabled={!editing}
+                                        sx={{ mb: 2 }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="ชื่อผู้ใช้"
+                                        value={user.username || ''}
+                                        disabled
+                                        sx={{ mb: 2 }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="อีเมล"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                        disabled={!editing}
+                                        sx={{ mb: 2 }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="เบอร์โทรศัพท์"
+                                        value={formData.phone_number}
+                                        onChange={(e) => setFormData({...formData, phone_number: e.target.value})}
+                                        disabled={!editing}
+                                        sx={{ mb: 2 }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <TextField
+                                        fullWidth
+                                        label="ที่อยู่"
+                                        multiline
+                                        rows={3}
+                                        value={formData.address}
+                                        onChange={(e) => setFormData({...formData, address: e.target.value})}
+                                        disabled={!editing}
+                                        sx={{ mb: 2 }}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </CardContent>
+                    </Paper>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                    <Paper elevation={2} sx={{ 
+                        background: '#ffffff', 
+                        borderRadius: 3,
+                        border: '1px solid rgb(148, 148, 148)'
+                    }}>
+                        <CardContent sx={{ p: 4 }}>
+                            <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold' }}>
+                                ข้อมูลบัญชี
+                            </Typography>
+                            
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                    สถานะ
+                                </Typography>
+                                <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                                    {user.role === 'admin' ? 'ผู้ดูแลระบบ' : 
+                                     user.role === 'doctor' ? 'แพทย์' : 'ผู้ป่วย'}
+                                </Typography>
+                            </Box>
+
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                    วันที่สมัคร
+                                </Typography>
+                                <Typography variant="body1">
+                                    {user.created_at ? new Date(user.created_at).toLocaleDateString('th-TH') : 'ไม่ระบุ'}
+                                </Typography>
+                            </Box>
+
+                            <Button
+                                variant="outlined"
+                                fullWidth
+                                startIcon={<LockIcon />}
+                                onClick={() => setChangePasswordDialog(true)}
+                                sx={{ borderRadius: 2 }}
+                            >
+                                เปลี่ยนรหัสผ่าน
+                            </Button>
+                        </CardContent>
+                    </Paper>
+                </Grid>
+            </Grid>
+
+            {/* Change Password Dialog */}
+            <Dialog open={changePasswordDialog} onClose={() => setChangePasswordDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>เปลี่ยนรหัสผ่าน</DialogTitle>
                 <DialogContent>
-                    <DialogContentText>
-                        {dialogMessage}
-                    </DialogContentText>
+                    <Box sx={{ pt: 2 }}>
+                        <TextField
+                            fullWidth
+                            label="รหัสผ่านปัจจุบัน"
+                            type="password"
+                            value={passwordData.currentPassword}
+                            onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                            sx={{ mb: 2 }}
+                        />
+                        <TextField
+                            fullWidth
+                            label="รหัสผ่านใหม่"
+                            type="password"
+                            value={passwordData.newPassword}
+                            onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                            sx={{ mb: 2 }}
+                        />
+                        <TextField
+                            fullWidth
+                            label="ยืนยันรหัสผ่านใหม่"
+                            type="password"
+                            value={passwordData.confirmPassword}
+                            onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                        />
+                    </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleCloseDialog} autoFocus>
-                        OK
+                    <Button onClick={() => setChangePasswordDialog(false)}>
+                        ยกเลิก
+                    </Button>
+                    <Button onClick={handleChangePassword} variant="contained">
+                        เปลี่ยนรหัสผ่าน
                     </Button>
                 </DialogActions>
             </Dialog>
