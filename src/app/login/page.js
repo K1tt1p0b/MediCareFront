@@ -62,7 +62,7 @@ export default function LoginPage() {
                 if (user.role === 'admin') {
                     window.location.href = '/admin';
                 } else if (user.role === 'doctor') {
-                    window.location.href = '/FindDoctor';
+                    window.location.href = '/doctor-time-slots';
                 } else {
                     // Default for patients
                     window.location.href = '/FindDoctor';

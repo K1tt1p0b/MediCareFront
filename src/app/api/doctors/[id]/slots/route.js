@@ -1,23 +1,34 @@
 export async function GET(request, { params }) {
     try {
-        const { id } = await params;  // เพิ่ม await ตรงนี้
+        // Await params before destructuring
+        const { id } = await params;
         const authHeader = request.headers.get('authorization');
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/doctors/${id}/slots`, {
             headers: {
-                'Authorization': authHeader || '',
-                'Content-Type': 'application/json'
-            }
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+            },
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            return new Response(JSON.stringify({ error: 'Failed to fetch doctor slots' }), {
+                status: response.status,
+                headers: { 'Content-Type': 'application/json' },
+            });
         }
 
         const data = await response.json();
-        return Response.json(data);
+        return new Response(JSON.stringify(data), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+
     } catch (error) {
-        console.error('Error fetching time slots:', error);
-        return Response.json({ error: 'Failed to fetch time slots' }, { status: 500 });
+        console.error('Error fetching doctor slots:', error);
+        return new Response(JSON.stringify({ error: 'Internal server error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
-} 
+}

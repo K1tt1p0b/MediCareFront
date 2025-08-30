@@ -66,6 +66,7 @@ function Navbar() {
                         {/* แสดงเมนูตาม role */}
                         {user.role === 'patient' && (
                             <>
+                                <Button color="inherit" onClick={() => navigateTo('/FindDoctor')}>หน้าแรก</Button>
                                 <Button color="inherit" onClick={() => navigateTo('/my-appointments')}>ดูรายการนัดหมาย</Button>
                             </>
                         )}
@@ -74,11 +75,15 @@ function Navbar() {
                             <>
                                 <Button color="inherit" onClick={() => navigateTo('/doctor-appointments')}>ดูนัดหมายคนไข้</Button>
                                 <Button color="inherit" onClick={() => navigateTo('/doctor-time-slots')}>จัดการเวลาว่าง</Button>
+                                <Button color="inherit" onClick={() => navigateTo('/report-appointments')}>ดูรายงานการนัดหมาย</Button>
                             </>
                         )}
                         
                         {user.role === 'admin' && (
-                            <Button color="inherit" onClick={() => navigateTo('/admin')}>Admin</Button>
+                            <>
+                                <Button color="inherit" onClick={() => navigateTo('/admin')}>จัดการผู้ใช้</Button>
+                                <Button color="inherit" onClick={() => navigateTo('/report-appointments')}>ดูรายงานการนัดหมาย</Button>
+                            </>
                         )}
                         
                         <Button color="inherit" onClick={handleMenu}>คุณ{user.full_name}</Button>

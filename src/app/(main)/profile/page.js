@@ -29,6 +29,7 @@ import LockIcon from '@mui/icons-material/Lock';
 
 export default function ProfilePage() {
     const [user, setUser] = useState(null);
+    const [doctorData, setDoctorData] = useState(null); // <--- เพิ่ม state นี้
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
     const [error, setError] = useState('');
@@ -45,6 +46,12 @@ export default function ProfilePage() {
         phone_number: '',
         address: ''
     });
+    // เพิ่ม state สำหรับการแก้ไขข้อมูลแพทย์
+    const [doctorFormData, setDoctorFormData] = useState({
+        license_number: '',
+        bio: ''
+    });
+
     const router = useRouter();
 
     useEffect(() => {
@@ -52,36 +59,53 @@ export default function ProfilePage() {
     }, []);
 
     const loadUserProfile = async () => {
-        try {
-            setLoading(true);
-            const token = localStorage.getItem('token');
-            if (!token) {
-                router.push('/login');
-                return;
-            }
+    try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+            router.push('/login');
+            return;
+        }
 
-            const response = await fetch('/api/users/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
+        const response = await fetch('/api/users/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+            setFormData({
+                full_name: userData.full_name || '',
+                email: userData.email || '',
+                phone_number: userData.phone_number || '',
+                address: userData.address || ''
             });
 
-            if (response.ok) {
-                const userData = await response.json();
-                setUser(userData);
-                setFormData({
-                    full_name: userData.full_name || '',
-                    email: userData.email || '',
-                    phone_number: userData.phone_number || '',
-                    address: userData.address || ''
+            // ตรวจสอบว่าผู้ใช้เป็นแพทย์หรือไม่
+            if (userData.role === 'doctor') {
+                // สมมติว่ามี endpoint สำหรับดึงข้อมูลแพทย์
+                const doctorResponse = await fetch('/api/doctors/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-            } else {
-                setError('ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
+                if (doctorResponse.ok) {
+                    const docData = await doctorResponse.json();
+                    setDoctorData(docData);
+                    setDoctorFormData({
+                        license_number: docData.license_number || '',
+                        bio: docData.bio || ''
+                    });
+                }
             }
-        } catch (err) {
-            setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
-        } finally {
-            setLoading(false);
+
+        } else {
+            setError('ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
         }
-    };
+    } catch (err) {
+        setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handleEdit = () => {
         setEditing(true);
@@ -102,29 +126,50 @@ export default function ProfilePage() {
     };
 
     const handleSave = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/users/me', {
+    try {
+        const token = localStorage.getItem('token');
+        
+        // อัปเดตข้อมูลผู้ใช้ทั่วไป
+        const userResponse = await fetch('/api/users/me', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(formData)
+        });
+
+        if (!userResponse.ok) {
+            const errorData = await userResponse.text();
+            setError(errorData || 'ไม่สามารถอัปเดตข้อมูลผู้ใช้ได้');
+            return;
+        }
+
+        // ถ้าเป็นหมอ ให้อัปเดตข้อมูลหมอด้วย
+        if (user.role === 'doctor') {
+            const doctorResponse = await fetch('/api/doctors/me', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(doctorFormData)
             });
 
-            if (response.ok) {
-                setSuccess('อัปเดตข้อมูลสำเร็จ!');
-                setEditing(false);
-                await loadUserProfile();
-            } else {
-                const errorData = await response.text();
-                setError(errorData || 'ไม่สามารถอัปเดตข้อมูลได้');
+            if (!doctorResponse.ok) {
+                const errorData = await doctorResponse.text();
+                setError(errorData || 'ไม่สามารถอัปเดตข้อมูลแพทย์ได้');
+                return;
             }
-        } catch (error) {
-            setError('เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
         }
-    };
+
+        setSuccess('อัปเดตข้อมูลสำเร็จ!');
+        setEditing(false);
+        await loadUserProfile(); // โหลดข้อมูลใหม่ทั้งหมดหลังบันทึกสำเร็จ
+    } catch (error) {
+        setError('เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+    }
+};
 
     const handleChangePassword = async () => {
         if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -325,7 +370,40 @@ export default function ProfilePage() {
                                         sx={{ mb: 2 }}
                                     />
                                 </Grid>
+                                
                             </Grid>
+                            {user.role === 'doctor' && (
+    <>
+        <Grid item xs={12}>
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+                ข้อมูลแพทย์
+            </Typography>
+        </Grid>
+        <Grid item xs={12} sm={6}>
+            <TextField
+                fullWidth
+                label="หมายเลขใบอนุญาต"
+                value={doctorFormData.license_number}
+                onChange={(e) => setDoctorFormData({...doctorFormData, license_number: e.target.value})}
+                disabled={!editing}
+                sx={{ mb: 2 }}
+            />
+        </Grid>
+        <Grid item xs={12}>
+            <TextField
+                fullWidth
+                label="ประวัติส่วนตัว"
+                multiline
+                rows={4}
+                value={doctorFormData.bio}
+                onChange={(e) => setDoctorFormData({...doctorFormData, bio: e.target.value})}
+                disabled={!editing}
+                sx={{ mb: 2 }}
+            />
+        </Grid>
+    </>
+)}
                         </CardContent>
                     </Paper>
                 </Grid>
