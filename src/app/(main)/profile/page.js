@@ -6,7 +6,6 @@ import {
     Container,
     Typography,
     Box,
-    Card,
     CardContent,
     TextField,
     Button,
@@ -21,7 +20,6 @@ import {
     DialogContent,
     DialogActions
 } from '@mui/material';
-import PersonIcon from '@mui/icons-material/Person';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -29,7 +27,6 @@ import LockIcon from '@mui/icons-material/Lock';
 
 export default function ProfilePage() {
     const [user, setUser] = useState(null);
-    const [doctorData, setDoctorData] = useState(null); // <--- เพิ่ม state นี้
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
     const [error, setError] = useState('');
@@ -44,10 +41,8 @@ export default function ProfilePage() {
         full_name: '',
         email: '',
         phone_number: '',
-        address: ''
-    });
-    // เพิ่ม state สำหรับการแก้ไขข้อมูลแพทย์
-    const [doctorFormData, setDoctorFormData] = useState({
+        address: '',
+        specialty: '',
         license_number: '',
         bio: ''
     });
@@ -59,53 +54,39 @@ export default function ProfilePage() {
     }, []);
 
     const loadUserProfile = async () => {
-    try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-        if (!token) {
-            router.push('/login');
-            return;
-        }
-
-        const response = await fetch('/api/users/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-            setFormData({
-                full_name: userData.full_name || '',
-                email: userData.email || '',
-                phone_number: userData.phone_number || '',
-                address: userData.address || ''
-            });
-
-            // ตรวจสอบว่าผู้ใช้เป็นแพทย์หรือไม่
-            if (userData.role === 'doctor') {
-                // สมมติว่ามี endpoint สำหรับดึงข้อมูลแพทย์
-                const doctorResponse = await fetch('/api/doctors/me', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (doctorResponse.ok) {
-                    const docData = await doctorResponse.json();
-                    setDoctorData(docData);
-                    setDoctorFormData({
-                        license_number: docData.license_number || '',
-                        bio: docData.bio || ''
-                    });
-                }
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('token');
+            if (!token) {
+                router.push('/login');
+                return;
             }
 
-        } else {
-            setError('ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
+            const response = await fetch('/api/users/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const userData = await response.json();
+                setUser(userData);
+                setFormData({
+                    full_name: userData.full_name || '',
+                    email: userData.email || '',
+                    phone_number: userData.phone_number || '',
+                    address: userData.address || '',
+                    specialty: userData.specialty || '',
+                    license_number: userData.license_number || '',
+                    bio: userData.bio || ''
+                });
+            } else {
+                setError('ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
+            }
+        } catch (err) {
+            setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+        } finally {
+            setLoading(false);
         }
-    } catch (err) {
-        setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
-    } finally {
-        setLoading(false);
-    }
-};
+    };
 
     const handleEdit = () => {
         setEditing(true);
@@ -119,57 +100,42 @@ export default function ProfilePage() {
             full_name: user.full_name || '',
             email: user.email || '',
             phone_number: user.phone_number || '',
-            address: user.address || ''
+            address: user.address || '',
+            specialty: user.specialty || '',
+            license_number: user.license_number || '',
+            bio: user.bio || ''
         });
         setError('');
         setSuccess('');
     };
 
     const handleSave = async () => {
-    try {
-        const token = localStorage.getItem('token');
-        
-        // อัปเดตข้อมูลผู้ใช้ทั่วไป
-        const userResponse = await fetch('/api/users/me', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(formData)
-        });
-
-        if (!userResponse.ok) {
-            const errorData = await userResponse.text();
-            setError(errorData || 'ไม่สามารถอัปเดตข้อมูลผู้ใช้ได้');
-            return;
-        }
-
-        // ถ้าเป็นหมอ ให้อัปเดตข้อมูลหมอด้วย
-        if (user.role === 'doctor') {
-            const doctorResponse = await fetch('/api/doctors/me', {
+        try {
+            const token = localStorage.getItem('token');
+            
+            // ส่งข้อมูลทั้งหมดจาก formData ไปยัง API
+            const response = await fetch('/api/users/me', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(doctorFormData)
+                body: JSON.stringify(formData)
             });
 
-            if (!doctorResponse.ok) {
-                const errorData = await doctorResponse.text();
-                setError(errorData || 'ไม่สามารถอัปเดตข้อมูลแพทย์ได้');
+            if (!response.ok) {
+                const errorData = await response.text();
+                setError(errorData || 'ไม่สามารถอัปเดตข้อมูลผู้ใช้ได้');
                 return;
             }
-        }
 
-        setSuccess('อัปเดตข้อมูลสำเร็จ!');
-        setEditing(false);
-        await loadUserProfile(); // โหลดข้อมูลใหม่ทั้งหมดหลังบันทึกสำเร็จ
-    } catch (error) {
-        setError('เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
-    }
-};
+            setSuccess('อัปเดตข้อมูลสำเร็จ!');
+            setEditing(false);
+            await loadUserProfile();
+        } catch (error) {
+            setError('เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+        }
+    };
 
     const handleChangePassword = async () => {
         if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -233,7 +199,6 @@ export default function ProfilePage() {
 
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-            {/* Header */}
             <Box sx={{ textAlign: 'center', mb: 6 }}>
                 <Paper elevation={2} sx={{ 
                     background: '#ffffff', 
@@ -260,7 +225,6 @@ export default function ProfilePage() {
                 </Paper>
             </Box>
 
-            {/* Error and Success Alerts */}
             {error && (
                 <Alert severity="error" sx={{ mb: 4, borderRadius: 2 }}>
                     {error}
@@ -273,7 +237,6 @@ export default function ProfilePage() {
                 </Alert>
             )}
 
-            {/* Profile Information */}
             <Grid container spacing={4}>
                 <Grid item xs={12} md={8}>
                     <Paper elevation={2} sx={{ 
@@ -370,40 +333,51 @@ export default function ProfilePage() {
                                         sx={{ mb: 2 }}
                                     />
                                 </Grid>
-                                
                             </Grid>
+                            
                             {user.role === 'doctor' && (
-    <>
-        <Grid item xs={12}>
-            <Divider sx={{ my: 3 }} />
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                ข้อมูลแพทย์
-            </Typography>
-        </Grid>
-        <Grid item xs={12} sm={6}>
-            <TextField
-                fullWidth
-                label="หมายเลขใบอนุญาต"
-                value={doctorFormData.license_number}
-                onChange={(e) => setDoctorFormData({...doctorFormData, license_number: e.target.value})}
-                disabled={!editing}
-                sx={{ mb: 2 }}
-            />
-        </Grid>
-        <Grid item xs={12}>
-            <TextField
-                fullWidth
-                label="ประวัติส่วนตัว"
-                multiline
-                rows={4}
-                value={doctorFormData.bio}
-                onChange={(e) => setDoctorFormData({...doctorFormData, bio: e.target.value})}
-                disabled={!editing}
-                sx={{ mb: 2 }}
-            />
-        </Grid>
-    </>
-)}
+                                <>
+                                    <Grid item xs={12}>
+                                        <Divider sx={{ my: 3 }} />
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+                                            ข้อมูลแพทย์
+                                        </Typography>
+                                    </Grid>
+                                    <Grid container spacing={3}>
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField
+                                                fullWidth
+                                                label="ความเชี่ยวชาญ"
+                                                value={formData.specialty}
+                                                disabled
+                                                sx={{ mb: 2 }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField
+                                                fullWidth
+                                                label="หมายเลขใบอนุญาต"
+                                                value={formData.license_number}
+                                                onChange={(e) => setFormData({...formData, license_number: e.target.value})}
+                                                disabled={!editing}
+                                                sx={{ mb: 2 }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <TextField
+                                                fullWidth
+                                                label="ประวัติส่วนตัว"
+                                                multiline
+                                                rows={4}
+                                                value={formData.bio}
+                                                onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                                                disabled={!editing}
+                                                sx={{ mb: 2 }}
+                                            />
+                                        </Grid>
+                                    </Grid>
+                                </>
+                            )}
                         </CardContent>
                     </Paper>
                 </Grid>
@@ -425,7 +399,7 @@ export default function ProfilePage() {
                                 </Typography>
                                 <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
                                     {user.role === 'admin' ? 'ผู้ดูแลระบบ' : 
-                                     user.role === 'doctor' ? 'แพทย์' : 'ผู้ป่วย'}
+                                    user.role === 'doctor' ? 'แพทย์' : 'ผู้ป่วย'}
                                 </Typography>
                             </Box>
 
@@ -452,7 +426,6 @@ export default function ProfilePage() {
                 </Grid>
             </Grid>
 
-            {/* Change Password Dialog */}
             <Dialog open={changePasswordDialog} onClose={() => setChangePasswordDialog(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>เปลี่ยนรหัสผ่าน</DialogTitle>
                 <DialogContent>
