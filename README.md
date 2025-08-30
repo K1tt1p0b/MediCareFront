@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# MediCare - ระบบจัดการนัดหมายแพทย์
 
-## Getting Started
+## โครงสร้างโปรเจค
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+ข้อสอบBackend_Frontend/
+├── Backend/                 # Node.js + Express API
+│   ├── MediCare_Api.js     # API Server
+│   └── package.json
+└── Frontend/               # Next.js Frontend
+    └── medicare-frontend/
+        ├── src/app/
+        │   ├── (main)/     # หน้าหลัก (ต้องล็อกอิน)
+        │   │   ├── admin/  # หน้า Admin Dashboard
+        │   │   ├── appointment/
+        │   │   ├── FindDoctor/
+        │   │   └── profile/
+        │   ├── admin-register/  # หน้าสร้าง Admin
+        │   ├── login/
+        │   └── register/
+        └── src/app/api/    # Next.js API Routes
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## การติดตั้งและใช้งาน
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### 1. ติดตั้ง Backend
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cd Backend
+npm install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+สร้างไฟล์ `.env`:
+```env
+DB_HOST=localhost
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=medicare_db
+JWT_SECRET=your_jwt_secret_key
+PORT=3001
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+รัน Backend:
+```bash
+node MediCare_Api.js
+```
 
-## Deploy on Vercel
+### 2. ติดตั้ง Frontend
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+cd Frontend/medicare-frontend
+npm install
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+รัน Frontend:
+```bash
+npm run dev
+```
+
+## ระบบความปลอดภัย
+
+- **JWT Authentication:** ทุก API ต้องมี valid JWT token
+- **Role-based Authorization:** Admin เท่านั้นที่เข้าถึง admin APIs ได้
+- **Password Hashing:** รหัสผ่านถูกเข้ารหัสด้วย bcrypt
+- **Input Validation:** ตรวจสอบข้อมูลที่รับเข้ามา
+
+## การจัดการ Database
+
+ระบบจะสร้างตารางต่อไปนี้โดยอัตโนมัติ:
+
+- `users` - ข้อมูลผู้ใช้ทั้งหมด
+- `doctors` - ข้อมูลหมอ (เชื่อมโยงกับ users)
+- `time_slots` - ช่วงเวลาที่หมอว่าง
+- `appointments` - การนัดหมาย
+- 
+## รหัสของ Admin
+kittipob.jir
+123456
+
+
